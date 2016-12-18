@@ -2454,7 +2454,7 @@ DUK_INTERNAL void duk_push_class_string_tval(duk_context *ctx, duk_tval *tv) {
 		break;
 	}
 	case DUK_TAG_BUFFER: {
-		stridx = DUK_STRIDX_ARRAY_BUFFER;
+		stridx = DUK_STRIDX_UINT8_ARRAY;
 		break;
 	}
 #if defined(DUK_USE_FASTINT)
@@ -2593,7 +2593,7 @@ DUK_EXTERNAL const char *duk_to_string(duk_context *ctx, duk_idx_t idx) {
 		goto skip_replace;
 #endif
 	}
-	case DUK_TAG_BUFFER:
+	case DUK_TAG_BUFFER: /* Go through Uint8Array.prototype.toString() for coercion. */
 	case DUK_TAG_OBJECT: {
 		/* Plain buffers: go through ArrayBuffer.prototype.toString()
 		 * for coercion.
@@ -2857,9 +2857,6 @@ DUK_EXTERNAL void duk_to_object(duk_context *ctx, duk_idx_t idx) {
 	DUK_ASSERT(tv != NULL);
 
 	switch (DUK_TVAL_GET_TAG(tv)) {
-#if !defined(DUK_USE_BUFFEROBJECT_SUPPORT)
-	case DUK_TAG_BUFFER:  /* With no bufferobject support, don't object coerce. */
-#endif
 	case DUK_TAG_UNDEFINED:
 	case DUK_TAG_NULL: {
 		DUK_ERROR_TYPE(thr, DUK_STR_NOT_OBJECT_COERCIBLE);
@@ -2891,22 +2888,10 @@ DUK_EXTERNAL void duk_to_object(duk_context *ctx, duk_idx_t idx) {
 		/* nop */
 		break;
 	}
-#if defined(DUK_USE_BUFFEROBJECT_SUPPORT)
 	case DUK_TAG_BUFFER: {
-		/* A plain buffer object coerces to a full ArrayBuffer which
-		 * is not fully transparent behavior (ToObject() should be a
-		 * nop for an object).  This behavior matches lightfuncs which
-		 * also coerce to an equivalent Function object.  There are
-		 * also downsides to defining ToObject(plainBuffer) as a no-op.
-		 */
-		duk_hbuffer *h_buf;
-
-		h_buf = DUK_TVAL_GET_BUFFER(tv);
-		DUK_ASSERT(h_buf != NULL);
-		duk_hbufobj_push_arraybuffer_from_plain(thr, h_buf);
-		goto replace_value;
+		/* FIXME: no-op after all */
+		break;
 	}
-#endif
 	case DUK_TAG_POINTER: {
 		flags = DUK_HOBJECT_FLAG_EXTENSIBLE |
 		        DUK_HOBJECT_CLASS_AS_FLAGS(DUK_HOBJECT_CLASS_POINTER);
@@ -3083,8 +3068,8 @@ DUK_INTERNAL duk_small_uint_t duk_get_class_number(duk_context *ctx, duk_idx_t i
 		DUK_ASSERT(obj != NULL);
 		return DUK_HOBJECT_GET_CLASS_NUMBER(obj);
 	case DUK_TAG_BUFFER:
-		/* Buffers behave like ArrayBuffer objects. */
-		return DUK_HOBJECT_CLASS_ARRAYBUFFER;
+		/* Buffers behave like Uint8Array objects. */
+		return DUK_HOBJECT_CLASS_UINT8ARRAY;
 	case DUK_TAG_LIGHTFUNC:
 		/* Lightfuncs behave like Function objects. */
 		return DUK_HOBJECT_CLASS_FUNCTION;
@@ -5237,7 +5222,7 @@ DUK_LOCAL const char *duk__push_string_tval_readable(duk_context *ctx, duk_tval 
 			break;
 		}
 		case DUK_TAG_BUFFER: {
-			/* While plain buffers mimics ArrayBuffers, they summarize differently.
+			/* While plain buffers mimic Uint8Arrays, they summarize differently.
 			 * This is useful so that the summarized string accurately reflects the
 			 * internal type which may matter for figuring out bugs etc.
 			 */

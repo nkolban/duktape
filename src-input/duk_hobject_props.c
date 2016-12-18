@@ -1801,7 +1801,7 @@ DUK_LOCAL duk_bool_t duk__get_own_propdesc_raw(duk_hthread *thr, duk_hobject *ob
 		DUK_DDD(DUK_DDDPRINT("bufobj property get for key: %!O, arr_idx: %ld",
 		                     (duk_heaphdr *) key, (long) arr_idx));
 
-		if (arr_idx != DUK__NO_ARRAY_INDEX) {
+		if (arr_idx != DUK__NO_ARRAY_INDEX && h_bufobj->is_view) {
 			DUK_DDD(DUK_DDDPRINT("array index exists"));
 
 			/* Careful with wrapping: arr_idx upshift may easily wrap, whereas
@@ -1836,7 +1836,7 @@ DUK_LOCAL duk_bool_t duk__get_own_propdesc_raw(duk_hthread *thr, duk_hobject *ob
 				/* index is above internal buffer length -> property is fully normal */
 				DUK_DDD(DUK_DDDPRINT("array index outside buffer -> normal property"));
 			}
-		} else if (key == DUK_HTHREAD_STRING_LENGTH(thr)) {
+		} else if (key == DUK_HTHREAD_STRING_LENGTH(thr) && h_bufobj->is_view) {
 			DUK_DDD(DUK_DDDPRINT("-> found, key is 'length', length exotic behavior"));
 
 			if (flags & DUK_GETDESC_FLAG_PUSH_VALUE) {
@@ -1858,7 +1858,7 @@ DUK_LOCAL duk_bool_t duk__get_own_propdesc_raw(duk_hthread *thr, duk_hobject *ob
 			}
 			out_desc->flags = DUK_PROPDESC_FLAG_VIRTUAL;
 			return 1;  /* cannot be arguments exotic */
-		} else if (key == DUK_HTHREAD_STRING_BYTE_OFFSET(thr)) {
+		} else if (key == DUK_HTHREAD_STRING_BYTE_OFFSET(thr) && h_bufobj->is_view) {
 			/* If neutered must return 0; offset is zeroed during
 			 * neutering.
 			 */
@@ -1867,7 +1867,7 @@ DUK_LOCAL duk_bool_t duk__get_own_propdesc_raw(duk_hthread *thr, duk_hobject *ob
 			}
 			out_desc->flags = DUK_PROPDESC_FLAG_VIRTUAL;
 			return 1;  /* cannot be arguments exotic */
-		} else if (key == DUK_HTHREAD_STRING_BYTES_PER_ELEMENT(thr)) {
+		} else if (key == DUK_HTHREAD_STRING_BYTES_PER_ELEMENT(thr) && h_bufobj->is_view) {
 			if (flags & DUK_GETDESC_FLAG_PUSH_VALUE) {
 				duk_push_uint(ctx, 1 << h_bufobj->shift);
 			}
@@ -2201,6 +2201,9 @@ DUK_LOCAL duk_bool_t duk__getprop_fastpath_bufobj_tval(duk_hthread *thr, duk_hob
 		return 0;
 	}
 	h_bufobj = (duk_hbufobj *) obj;
+	if (!h_bufobj->is_view) {
+		return 0;
+	}
 
 #if defined(DUK_USE_FASTINT)
 	if (DUK_TVAL_IS_FASTINT(tv_key)) {
@@ -2623,8 +2626,8 @@ DUK_INTERNAL duk_bool_t duk_hobject_getprop(duk_hthread *thr, duk_tval *tv_obj, 
 			return 1;
 		}
 
-		DUK_DDD(DUK_DDDPRINT("base object is a buffer, start lookup from ArrayBuffer prototype"));
-		curr = thr->builtins[DUK_BIDX_ARRAYBUFFER_PROTOTYPE];
+		DUK_DDD(DUK_DDDPRINT("base object is a buffer, start lookup from Uint8Array prototype"));
+		curr = thr->builtins[DUK_BIDX_UINT8ARRAY_PROTOTYPE];
 		goto lookup;  /* avoid double coercion */
 	}
 
@@ -2863,7 +2866,7 @@ DUK_INTERNAL duk_bool_t duk_hobject_hasprop(duk_hthread *thr, duk_tval *tv_obj, 
 			rc = 1;
 			goto pop_and_return;
 		}
-		obj = thr->builtins[DUK_BIDX_ARRAYBUFFER_PROTOTYPE];
+		obj = thr->builtins[DUK_BIDX_UINT8ARRAY_PROTOTYPE];
 	} else if (DUK_TVAL_IS_LIGHTFUNC(tv_obj)) {
 		arr_idx = duk__push_tval_to_property_key(ctx, tv_key, &key);
 		if (duk__key_is_lightfunc_ownprop(thr, key)) {
@@ -3615,8 +3618,8 @@ DUK_INTERNAL duk_bool_t duk_hobject_putprop(duk_hthread *thr, duk_tval *tv_obj, 
 			goto fail_not_writable;
 		}
 
-		DUK_DDD(DUK_DDDPRINT("base object is a buffer, start lookup from buffer prototype"));
-		curr = thr->builtins[DUK_BIDX_ARRAYBUFFER_PROTOTYPE];
+		DUK_DDD(DUK_DDDPRINT("base object is a buffer, start lookup from Uint8Array prototype"));
+		curr = thr->builtins[DUK_BIDX_UINT8ARRAY_PROTOTYPE];
 		goto lookup;  /* avoid double coercion */
 	}
 
@@ -3789,7 +3792,7 @@ DUK_INTERNAL duk_bool_t duk_hobject_putprop(duk_hthread *thr, duk_tval *tv_obj, 
 					/* Careful with wrapping: arr_idx upshift may easily wrap, whereas
 					 * length downshift won't.
 					 */
-					if (arr_idx < (h_bufobj->length >> h_bufobj->shift)) {
+					if (arr_idx < (h_bufobj->length >> h_bufobj->shift) && h_bufobj->is_view) {
 						duk_uint8_t *data;
 						DUK_DDD(DUK_DDDPRINT("writing to buffer data at index %ld", (long) arr_idx));
 

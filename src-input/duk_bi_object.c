@@ -397,7 +397,7 @@ DUK_INTERNAL duk_ret_t duk_bi_object_getprototype_shared(duk_context *ctx) {
 
 	switch (DUK_TVAL_GET_TAG(tv)) {
 	case DUK_TAG_BUFFER:
-		proto = thr->builtins[DUK_BIDX_ARRAYBUFFER_PROTOTYPE];
+		proto = thr->builtins[DUK_BIDX_UINT8ARRAY_PROTOTYPE];
 		break;
 	case DUK_TAG_LIGHTFUNC:
 		proto = thr->builtins[DUK_BIDX_FUNCTION_PROTOTYPE];
@@ -475,7 +475,7 @@ DUK_INTERNAL duk_ret_t duk_bi_object_setprototype_shared(duk_context *ctx) {
 		duk_hobject *curr_proto;
 		curr_proto = thr->builtins[(mask & DUK_TYPE_MASK_LIGHTFUNC) ?
 		                               DUK_BIDX_FUNCTION_PROTOTYPE :
-		                               DUK_BIDX_ARRAYBUFFER_PROTOTYPE];
+		                               DUK_BIDX_UINT8ARRAY_PROTOTYPE];
 		if (h_new_proto == curr_proto) {
 			goto skip;
 		}
@@ -698,6 +698,10 @@ DUK_INTERNAL duk_ret_t duk_bi_object_constructor_keys_shared(duk_context *ctx) {
 	if (magic == 3) {
 		/* ES6 Section 26.1.11 requires a TypeError for non-objects.  Lightfuncs
 		 * and plain buffers pretend to be objects, so accept those too.
+		 */
+
+		/* FIXME: if Object(plainbuffer) is a nop, all call sites like
+		 * this require special handling...
 		 */
 		obj = duk_require_hobject_promote_mask(ctx, 0, DUK_TYPE_MASK_LIGHTFUNC | DUK_TYPE_MASK_BUFFER);
 	} else {

@@ -2617,7 +2617,7 @@ DUK_LOCAL duk_bool_t duk__json_stringify_fast_value(duk_json_enc_ctx *js_ctx, du
 		break;
 	}
 	case DUK_TAG_BUFFER: {
-		/* Plain buffers are treated like ArrayBuffers: because they
+		/* Plain buffers are treated like Uint8Arrays: because they
 		 * have no enumerable own properties they normally serialize
 		 * to '{}'.  However, there can be a replacer (not relevant
 		 * here) or a .toJSON() method (which we need to check for
@@ -2626,7 +2626,7 @@ DUK_LOCAL duk_bool_t duk__json_stringify_fast_value(duk_json_enc_ctx *js_ctx, du
 
 #if defined(DUK_USE_BUFFEROBJECT_SUPPORT)
 		if (duk_hobject_hasprop_raw(js_ctx->thr,
-		                            js_ctx->thr->builtins[DUK_BIDX_ARRAYBUFFER_PROTOTYPE],
+		                            js_ctx->thr->builtins[DUK_BIDX_UINT8ARRAY_PROTOTYPE],
 		                            DUK_HTHREAD_STRING_TO_JSON(js_ctx->thr))) {
 			DUK_DD(DUK_DDPRINT("value is a plain buffer and there's an inherited .toJSON, abort fast path"));
 			goto abort_fastpath;

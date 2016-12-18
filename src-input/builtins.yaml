@@ -331,7 +331,7 @@ objects:
           id: bi_uint8array_constructor
         typedarray: true
         es6: true
-        present_if: DUK_USE_BUFFEROBJECT_SUPPORT
+        # Present even with DUK_USE_BUFFEROBJECT_SUPPORT disabled.
       - key: "Uint8ClampedArray"
         value:
           type: object
@@ -3219,25 +3219,6 @@ objects:
         typedarray: true
         es6: true
 
-      # Duktape custom: allocate a plain buffer, return value is always a
-      # freshly allocated fixed plain buffer.
-      - key: "allocPlain"
-        value:
-          type: function
-          native: duk_bi_arraybuffer_allocplain
-          length: 1
-          varargs: false
-        duktape: true
-
-      # Get plain buffer underlying a buffer object.
-      - key: "plainOf"
-        value:
-          type: function
-          native: duk_bi_arraybuffer_plainof
-          length: 1
-          varargs: false
-        duktape: true
-
       #- key:  # @@species
       #    type: symbol
       #    variant: wellknown
@@ -3251,7 +3232,7 @@ objects:
     typedarray: true
     es6: true
     bidx: true
-    # Present even when DUK_USE_BUFFEROBJECT_SUPPORT is disabled.
+    present_if: DUK_USE_BUFFEROBJECT_SUPPORT
 
     properties:
       - key: "constructor"
@@ -3291,7 +3272,8 @@ objects:
     typedarray: true
     es6: true
     bidx: true
-    present_if: DUK_USE_BUFFEROBJECT_SUPPORT
+    # Present even when DUK_USE_BUFFEROBJECT_SUPPORT is disabled
+    # to support plain buffers.
 
     properties:
       - key: "length"
@@ -3299,6 +3281,7 @@ objects:
         attributes: "c"
         typedarray: true
         es6: true
+        present_if: DUK_USE_BUFFEROBJECT_SUPPORT
       - key: "prototype"
         value:
           type: object
@@ -3582,11 +3565,13 @@ objects:
     native: duk_bi_typedarray_constructor
     callable: true
     constructable: false
+    nargs: 0
     magic: 0
     typedarray: true
     es6: true
     bidx: true
-    present_if: DUK_USE_BUFFEROBJECT_SUPPORT
+    # Present even when DUK_USE_BUFFEROBJECT_SUPPORT is disabled
+    # to support plain buffers.
 
     properties:
       - key: "length"
@@ -3594,16 +3579,19 @@ objects:
         attributes: "c"
         typedarray: true
         es6: true
+        present_if: DUK_USE_BUFFEROBJECT_SUPPORT
       - key: "prototype"
         value:
           type: object
           id: bi_typedarray_prototype
         attributes: ""
         es6: true
+        present_if: DUK_USE_BUFFEROBJECT_SUPPORT
       - key: "name"
         value: "TypedArray"
         attributes: "c"
         es6: true
+        present_if: DUK_USE_BUFFEROBJECT_SUPPORT
 
       # .from
       # .of
@@ -3622,7 +3610,8 @@ objects:
     typedarray: true
     es6: true
     bidx: true
-    present_if: DUK_USE_BUFFEROBJECT_SUPPORT
+    # Present even when DUK_USE_BUFFEROBJECT_SUPPORT is disabled
+    # to support plain buffers.
 
     properties:
       - key: "set"
@@ -3633,6 +3622,7 @@ objects:
           varargs: false
         typedarray: true
         es6: true
+        present_if: DUK_USE_BUFFEROBJECT_SUPPORT
       - key: "subarray"
         value:
           type: function
@@ -3642,6 +3632,7 @@ objects:
           magic: 1  # magic: 0x01=isView, 0x02=create copy, 0x04=Node.js Buffer special
         typedarray: true
         es6: true
+        present_if: DUK_USE_BUFFEROBJECT_SUPPORT
 
       #- key:  # @@iterator
       #    type: symbol
@@ -3726,6 +3717,7 @@ objects:
     native: duk_bi_typedarray_constructor
     callable: true
     constructable: true
+    nargs: 3
     magic:
       type: typedarray_constructor
       elem: "uint8"
@@ -3752,6 +3744,7 @@ objects:
         value: "Uint8Array"
         attributes: "c"
         es6: true
+        present_if: DUK_USE_BUFFEROBJECT_SUPPORT
       - key: "BYTES_PER_ELEMENT"
         value: 1
         attributes: ""
@@ -3771,7 +3764,8 @@ objects:
     typedarray: true
     es6: true
     bidx: true
-    present_if: DUK_USE_BUFFEROBJECT_SUPPORT
+    # Present even when DUK_USE_BUFFEROBJECT_SUPPORT is disabled
+    # to support plain buffers.
 
     properties:
       - key: "constructor"
@@ -3781,6 +3775,30 @@ objects:
         attributes: "wc"
         typedarray: true
         es6: true
+        present_if: DUK_USE_BUFFEROBJECT_SUPPORT
+
+      # FIXME: where to put these?
+
+      # Duktape custom: allocate a plain buffer, return value is always a
+      # freshly allocated fixed plain buffer.
+      #- key: "allocPlain"
+      #  value:
+      #    type: function
+      #    native: duk_bi_arraybuffer_allocplain
+      #    length: 1
+      #    varargs: false
+      #  duktape: true
+      # FIXME
+
+      # Get plain buffer underlying a buffer object.
+      #- key: "plainOf"
+      #  value:
+      #    type: function
+      #    native: duk_bi_arraybuffer_plainof
+      #    length: 1
+      #    varargs: false
+      #  duktape: true
+      # FIXME
 
   - id: bi_uint8clampedarray_constructor
     class: Function

@@ -1021,6 +1021,42 @@ DUK_INTERNAL duk_ret_t duk_bi_typedarray_constructor(duk_context *ctx) {
  fail_arguments:
 	DUK_DCERROR_RANGE_INVALID_ARGS(thr);
 }
+#else  /* DUK_USE_BUFFEROBJECT_SUPPORT */
+/* When bufferobject support is disabled, new Uint8Array() is still supported
+ * and creates a plain fixed buffer.
+ */
+DUK_INTERNAL duk_ret_t duk_bi_typedarray_constructor(duk_context *ctx) {
+	duk_int_t elem_length_signed;
+	duk_uint_t byte_length;
+	duk_uint8_t *data;
+
+	/* XXX: The same copy helpers could be shared with at least some
+	 * buffer functions.
+	 */
+
+	duk_require_constructor_call(ctx);
+
+	elem_length_signed = duk_require_int(ctx, 0);
+	if (elem_length_signed < 0) {
+		goto fail_arguments;
+	}
+	byte_length = (duk_uint_t) elem_length_signed;
+
+	/* FIXME: _zeroed() helper */
+	data = (duk_uint8_t *) duk_push_fixed_buffer(ctx, (duk_size_t) byte_length);
+
+#if !defined(DUK_USE_ZERO_BUFFER_DATA)
+	/* Khronos/ES6 requires zeroing even when DUK_USE_ZERO_BUFFER_DATA
+	 * is not set.
+	 */
+	DUK_ASSERT(!DUK_HBUFFER_HAS_DYNAMIC((duk_hbuffer *) h_val));
+	DUK_MEMZERO(data, (duk_size_t) byte_length);
+#endif
+	return 1;
+
+ fail_arguments:
+	DUK_DCERROR_RANGE_INVALID_ARGS((duk_hthread *) ctx);
+}
 #endif  /* DUK_USE_BUFFEROBJECT_SUPPORT */
 
 #if defined(DUK_USE_BUFFEROBJECT_SUPPORT)
