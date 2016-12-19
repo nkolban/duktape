@@ -1205,6 +1205,8 @@ DUK_INTERNAL duk_bool_t duk_heap_mark_and_sweep(duk_heap *heap, duk_small_uint_t
 	}
 #endif
 
+	/* FIXME: property cache invalidation or comment why not needed. */
+
 	DUK_D(DUK_DPRINT("garbage collect (mark-and-sweep) starting, requested flags: 0x%08lx, effective flags: 0x%08lx",
 	                 (unsigned long) flags, (unsigned long) (flags | heap->mark_and_sweep_base_flags)));
 

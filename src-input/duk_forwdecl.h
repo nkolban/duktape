@@ -43,6 +43,7 @@ struct duk_catcher;
 struct duk_strcache;
 struct duk_ljstate;
 struct duk_strtab_entry;
+struct duk_propcache_entry;
 
 #if defined(DUK_USE_DEBUG)
 struct duk_fixedbuffer;
@@ -99,6 +100,7 @@ typedef struct duk_catcher duk_catcher;
 typedef struct duk_strcache duk_strcache;
 typedef struct duk_ljstate duk_ljstate;
 typedef struct duk_strtab_entry duk_strtab_entry;
+typedef struct duk_propcache_entry duk_propcache_entry;
 
 #if defined(DUK_USE_DEBUG)
 typedef struct duk_fixedbuffer duk_fixedbuffer;

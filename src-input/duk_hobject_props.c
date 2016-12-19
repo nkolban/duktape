@@ -2308,6 +2308,7 @@ DUK_INTERNAL duk_bool_t duk_hobject_getprop(duk_hthread *thr, duk_tval *tv_obj, 
 	duk_context *ctx = (duk_context *) thr;
 	duk_tval tv_obj_copy;
 	duk_tval tv_key_copy;
+	duk_hobject *orig_base;
 	duk_hobject *curr = NULL;
 	duk_hstring *key = NULL;
 	duk_uint32_t arr_idx = DUK__NO_ARRAY_INDEX;
@@ -2683,6 +2684,22 @@ DUK_INTERNAL duk_bool_t duk_hobject_getprop(duk_hthread *thr, duk_tval *tv_obj, 
 	DUK_ASSERT(curr != NULL);
 	DUK_ASSERT(key != NULL);
 
+	orig_base = curr;
+	{
+		/* FIXME: when base is primitive, we cache the "wrong" property,
+		 * which is fine.
+		 */
+		duk_tval *storage;
+		storage = duk_propcache_lookup(thr, curr, key);
+		if (storage) {
+			DUK_D(DUK_DPRINT("cached lookup %!O -> %!T", key, storage));
+			duk_pop(ctx);
+			duk_push_tval(ctx, storage);
+			/* FIXME: assume no post process? */
+			return 1;
+		}
+	}
+
 	sanity = DUK_HOBJECT_PROTOTYPE_CHAIN_SANITY;
 	do {
 		if (!duk__get_own_propdesc_raw(thr, curr, key, arr_idx, &desc, DUK_GETDESC_FLAG_PUSH_VALUE)) {
@@ -2692,6 +2709,9 @@ DUK_INTERNAL duk_bool_t duk_hobject_getprop(duk_hthread *thr, duk_tval *tv_obj, 
 		if (desc.get != NULL) {
 			/* accessor with defined getter */
 			DUK_ASSERT((desc.flags & DUK_PROPDESC_FLAG_ACCESSOR) != 0);
+
+			DUK_D(DUK_DPRINT("prevent caching, getter"));
+			orig_base = NULL;
 
 			duk_pop(ctx);                     /* [key undefined] -> [key] */
 			duk_push_hobject(ctx, desc.get);
@@ -2735,6 +2755,8 @@ DUK_INTERNAL duk_bool_t duk_hobject_getprop(duk_hthread *thr, duk_tval *tv_obj, 
 	/*
 	 *  Not found
 	 */
+
+	/* XXX: No negative property caching at present. */
 
 	duk_to_undefined(ctx, -1);  /* [key] -> [undefined] (default value) */
 
@@ -2802,6 +2824,11 @@ DUK_INTERNAL duk_bool_t duk_hobject_getprop(duk_hthread *thr, duk_tval *tv_obj, 
 		}
 	}
 #endif   /* !DUK_USE_NONSTD_FUNC_CALLER_PROPERTY */
+
+	if (orig_base && arr_idx == DUK__NO_ARRAY_INDEX) {  /* FIXME: condition */
+		/* FIXME: other conditions, e.g. not a getter */
+		duk_propcache_insert(thr, orig_base, key, DUK_GET_TVAL_NEGIDX(ctx, -1));
+	}
 
 	duk_remove_m2(ctx);  /* [key result] -> [result] */
 
@@ -3357,6 +3384,8 @@ DUK_INTERNAL duk_bool_t duk_hobject_putprop(duk_hthread *thr, duk_tval *tv_obj, 
 	DUK_ASSERT(tv_val != NULL);
 
 	DUK_ASSERT_VALSTACK_SPACE(thr, DUK__VALSTACK_SPACE);
+
+	duk_propcache_invalidate(thr);
 
 	/*
 	 *  Make a copy of tv_obj, tv_key, and tv_val to avoid any issues of
@@ -4259,6 +4288,8 @@ DUK_INTERNAL duk_bool_t duk_hobject_delprop_raw(duk_hthread *thr, duk_hobject *o
 	duk_bool_t throw_flag;
 	duk_bool_t force_flag;
 
+	duk_propcache_invalidate(thr);
+
 	throw_flag = (flags & DUK_DELPROP_FLAG_THROW);
 	force_flag = (flags & DUK_DELPROP_FLAG_FORCE);
 
@@ -4623,6 +4654,8 @@ DUK_INTERNAL void duk_hobject_define_property_internal(duk_hthread *thr, duk_hob
 	duk_tval *tv2 = NULL;
 	duk_small_uint_t propflags = flags & DUK_PROPDESC_FLAGS_MASK;  /* mask out flags not actually stored */
 
+	duk_propcache_invalidate(thr);
+
 	DUK_DDD(DUK_DDDPRINT("define new property (internal): thr=%p, obj=%!O, key=%!O, flags=0x%02lx, val=%!T",
 	                     (void *) thr, (duk_heaphdr *) obj, (duk_heaphdr *) key,
 	                     (unsigned long) flags, (duk_tval *) duk_get_tval(ctx, -1)));
@@ -4743,6 +4776,8 @@ DUK_INTERNAL void duk_hobject_define_property_internal_arridx(duk_hthread *thr, 
 	duk_context *ctx = (duk_context *) thr;
 	duk_hstring *key;
 	duk_tval *tv1, *tv2;
+
+	duk_propcache_invalidate(thr);
 
 	DUK_DDD(DUK_DDDPRINT("define new property (internal) arr_idx fast path: thr=%p, obj=%!O, "
 	                     "arr_idx=%ld, flags=0x%02lx, val=%!T",
@@ -5084,6 +5119,8 @@ duk_bool_t duk_hobject_define_property_helper(duk_context *ctx,
 	/* idx_value may be < 0 (no value), set and get may be NULL */
 
 	DUK_ASSERT_VALSTACK_SPACE(thr, DUK__VALSTACK_SPACE);
+
+	duk_propcache_invalidate(thr);
 
 	/* All the flags fit in 16 bits, so will fit into duk_bool_t. */
 
